@@ -8,7 +8,7 @@ camping-gear e-commerce brand). Built as a freelance demo with a 24–48h SLA.
 - **State:** In-memory session FSM + Regex-based intent detection
 
 ---
-
+## Video Demo : https://drive.google.com/drive/folders/1HL9k2odKR1nf5qEYsYKwR3d3eZ2jeHeY?usp=sharing
 ## ✨ Features
 
 | Use case | How it works |
