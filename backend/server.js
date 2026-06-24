@@ -87,7 +87,11 @@ const SHIPPING_INFO = {
 /* ============================================================================
  * 2. INTENT DICTIONARY  (Regex-based, EN + ES)
  * ============================================================================
- *  Iterated in order; FIRST match wins → specific intents before generic ones.
+ *  Iterated in order; FIRST match wins. PRIORITY MATTERS now that single words
+ *  are matchable: the more action-specific intents (HUMAN_HANDOFF, RETURNS,
+ *  RECOMMEND) are listed BEFORE ORDER_TRACKING, so "return my order" resolves to
+ *  RETURNS (not tracking) and "talk to a human about my order" resolves to a
+ *  human. See the client-feedback fix notes inline (★).
  *
  *  [5.1] Code-switching: Spanish synonyms are folded in (the North American
  *  audience's primary second language). We use character classes like d[oó]nde
@@ -100,35 +104,50 @@ const SHIPPING_INFO = {
  *  any input. Combined with the 500-char cap, the regex layer is ReDoS-safe.
  * ========================================================================== */
 const INTENT_DICTIONARY = [
+  // ── HUMAN_HANDOFF (highest priority) ─────────────────────────────────────
+  // ★ Client fix: must catch a single "human" / "agent" / "representative".
+  // Placed FIRST so "talk to a human about my order" routes to a human, not
+  // tracking. The two-word phrase arms are kept (better precision where the
+  // extra context is present); the standalone alternation guarantees the
+  // single-word case.
   {
-    name: 'ORDER_TRACKING',
-    // EN: "track my order", "where is my package", "delivery status"
-    // ES: "¿dónde está mi pedido?", "rastrear mi envío", "cuándo llega"
-    pattern: /\b(where|track|tracking|status|locate|find|when|rastrear|estado|cu[aá]ndo)\b.*\b(order|package|delivery|shipment|parcel|pedido|paquete|env[ií]o|entrega)\b|\btrack (my )?order\b|\bd[oó]nde est[aá] (mi|el) (pedido|paquete|env[ií]o)\b/i,
+    name: 'HUMAN_HANDOFF',
+    // EN: "talk to a human", "live agent", "real person"
+    // ES: "humano", "agente", "atención al cliente"
+    pattern: /\b(talk to|hablar con).*(someone|human|agent|alguien|humano|agente)\b|\b(human|agent|representative|real person|humano|agente|persona real|representante)\b|support team|customer service|atenci[oó]n al cliente/i,
   },
+  // ── RETURN_EXCHANGE ──────────────────────────────────────────────────────
+  // ★ Client fix: must catch a single "return" / "exchange" / "refund".
+  // Listed BEFORE ORDER_TRACKING so "return my order" resolves to RETURNS.
   {
     name: 'RETURN_EXCHANGE',
     // EN: "return policy", "how do I return", "exchange", "refund"
     // ES: "devolver", "reembolso", "cambio", "política de devoluciones"
-    pattern: /\b(return|returns|exchange|refund|devolver|devolucion|devoluci[oó]n|reembolso|cambio)\b.*\b(policy|item|gear|jacket|how|can i|pol[ií]tica|art[ií]culo|c[oó]mo)\b|return policy|exchange policy|pol[ií]tica de devoluciones/i,
+    pattern: /return policy|exchange policy|pol[ií]tica de devoluciones|\b(return|returns|exchange|refund|devolver|devolucion|devoluci[oó]n|reembolso|cambio)\b.*\b(policy|item|gear|jacket|how|can i|pol[ií]tica|art[ií]culo|c[oó]mo)\b|\b(return|exchange|refund|devolver|reembolso|cambio)\b/i,
   },
+  // ── PRODUCT_RECOMMENDATION ───────────────────────────────────────────────
+  // ★ Client fix: must catch a single "recommend" / "gear" / "buy".
   {
     name: 'PRODUCT_RECOMMENDATION',
     // EN: "recommend gear", "what should I buy", "best tent"
     // ES: "recomienda", "sugiere", "qué equipo necesito"
-    pattern: /\b(recommend|suggest|recomienda|recomendar|sugiere|sugerir)\b|\b(what|qu[eé]).*(gear|should|buy|need|equipo|necesito|comprar)\b|\bbest .*(for|gear|para)\b/i,
+    pattern: /\b(what|qu[eé]).*(gear|should|buy|need|equipo|necesito|comprar)\b|\bbest .*(for|gear|para)\b|\b(recommend|suggest|recomienda|recomendar|sugiere|sugerir|gear|buy|comprar|equipo)\b/i,
+  },
+  // ── ORDER_TRACKING ───────────────────────────────────────────────────────
+  // ★ Client fix: must catch a single "track" / "status" / "order".
+  // Listed AFTER the action-specific intents so "return … order" / "human …
+  // order" are not stolen by the now-generic "order" keyword.
+  {
+    name: 'ORDER_TRACKING',
+    // EN: "track my order", "where is my package", "delivery status"
+    // ES: "¿dónde está mi pedido?", "rastrear mi envío", "cuándo llega"
+    pattern: /\btrack (my )?order\b|\bd[oó]nde est[aá] (mi|el) (pedido|paquete|env[ií]o)\b|\b(where|track|tracking|status|locate|find|when|rastrear|estado|cu[aá]ndo)\b.*\b(order|package|delivery|shipment|parcel|pedido|paquete|env[ií]o|entrega)\b|\b(track|status|order|track|pedido|rastrear)\b/i,
   },
   {
     name: 'SHIPPING_INFO',
     // EN: "how long does shipping take", "expedited"
     // ES: "tiempo de entrega", "cuánto tarda el envío"
     pattern: /\b(shipping|delivery time|how long|expedited|env[ií]o|entrega|cu[aá]nto tarda|tiempo de entrega)\b/i,
-  },
-  {
-    name: 'HUMAN_HANDOFF',
-    // EN: "talk to a human", "live agent", "real person"
-    // ES: "humano", "agente", "atención al cliente"
-    pattern: /\b(human|agent|representative|real person|humano|agente|persona real|representante)\b|\b(talk to|hablar con).*(someone|human|agent|alguien|humano|agente)\b|support team|customer service|atenci[oó]n al cliente/i,
   },
   {
     name: 'GREETING',
